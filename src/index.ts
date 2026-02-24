@@ -31,14 +31,14 @@ app.use(async (c, next) => {
   await next();
 });
 
+// We store payment in memory for simplitity sake
 type StoredPayment = {
   amount: number;
   privateKey: string;
   currency: string;
   token: string;
 };
-
-let currentPayment: StoredPayment | undefined = undefined;
+let storedPayment: StoredPayment | undefined = undefined;
 
 app
   .post("/pay", zValidator("json", PayinRequestSchema), async (c) => {
@@ -47,7 +47,7 @@ app
     let interaction_logs = new InteractionLogs();
     let span = interaction_logs.span("pay");
 
-    currentPayment = {
+    storedPayment = {
       amount: payRequest.payment.gateway_amount,
       privateKey: payRequest.payment.merchant_private_key,
       currency: payRequest.payment.gateway_currency,
@@ -78,7 +78,7 @@ app
     }
   })
   .post("/status", zValidator("json", StatusRequestSchema), async (c) => {
-    assert(currentPayment, "payment should exist when status is called");
+    assert(storedPayment, "payment should exist when status is called");
     let statusRequest = c.req.valid("json");
     let interaction_logs = new InteractionLogs();
     interaction_logs.span("status");
@@ -86,14 +86,14 @@ app
     // Reactivepay Status request will contain gateway id of transaction statusRequest.payment.gateway_token
     return c.json({
       status: "pending",
-      amount: currentPayment.amount * 100,
-      currency: currentPayment.currency,
+      amount: storedPayment.amount * 100,
+      currency: storedPayment.currency,
       result: true,
       logs: interaction_logs.build(),
     });
   })
   .post("/gateway/callback", async (c) => {
-    assert(currentPayment, "payment should exist when callback is called");
+    assert(storedPayment, "payment should exist when callback is called");
     let interactionLogs = new InteractionLogs();
     let span = interactionLogs.span("callback");
     span.set_request(
@@ -102,18 +102,18 @@ app
     );
     span.set_response_status(200);
     let url =
-      BusinessUrl + `/callbacks/v2/gateway_callbacks/${currentPayment.token}`;
+      BusinessUrl + `/callbacks/v2/gateway_callbacks/${storedPayment.token}`;
     let status = "approved";
     let rpPayload = {
       status,
       reason: status === "declined" ? "error message" : undefined,
-      currency: currentPayment.currency,
-      amount: currentPayment.amount,
+      currency: storedPayment.currency,
+      amount: storedPayment.amount,
       logs: interactionLogs.build(),
     };
     let jwt = await createJwt(
       rpPayload,
-      currentPayment.privateKey,
+      storedPayment.privateKey,
       Buffer.from(SignKey),
     );
 
