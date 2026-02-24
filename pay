@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# 4182
+# http://localhost:6001/settings/admin/user/3989/edit?return_to=
+
+curl -X POST http://localhost:4000/api/v1/payments \
+  -H 'content-type: application/json' \
+  -H 'authorization: Bearer c1bad9258111e0ef2b26' \
+  -d '{
+  "amount": 123456,
+  "customer": {
+    "email": "email@mail.com",
+    "country": "KZ",
+    "city": "Moscow"
+  },
+  "product": "test product",
+  "callback_url": "https://webhook.site/9f9e6527-f852-4c04-a23a-7f3e6bf7e64d",
+  "currency": "EUR"
+}'
+
